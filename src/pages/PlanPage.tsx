@@ -1,4 +1,5 @@
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { deleteWithUndo } from "../lib/undo";
 import { PlanMenu, TopicMenu } from "../components/menus";
 import { SortableContext, arrayMove, rectSortingStrategy, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import clsx from "clsx";
@@ -23,7 +24,7 @@ import { useHobby } from "../components/HobbyContext";
 import { HobbyHeader } from "../components/Layout";
 import { swallowNextClick, useSortableItem } from "../components/sortable";
 import { createAndOpenTopic, StageButton, stageLabel } from "../components/TopicDialog";
-import { Button, Chip, confirmDialog, IconButton, ProgressBar, Toolbar, useContextMenu } from "../components/ui";
+import { Button, Chip, IconButton, ProgressBar, Toolbar, useContextMenu } from "../components/ui";
 import * as repo from "../db/repo";
 import type { KnowledgeBase, Topic, TopicStage } from "../db/types";
 import type { OutlineRow } from "../domain/derived";
@@ -293,10 +294,9 @@ function PlanBaseView({ kb }: { kb: KnowledgeBase }) {
     return out;
   }, [outline, query, hideDone, sort, collapsed, flat, d]);
 
-  const remove = async () => {
-    if (!(await confirmDialog(`Plan „${kb.name}“ mit ${outline.length} Themen löschen?`))) return;
-    await mutate(() => repo.deleteKnowledgeBase(kb.id));
+  const remove = () => {
     navigate(`${base}/plan`);
+    deleteWithUndo("knowledge_base", kb.id, kb.name, () => repo.deleteKnowledgeBase(kb.id));
   };
 
   const sensors = useSensors(useSensor(PointerSensor, { activationConstraint: { distance: 5 } }));

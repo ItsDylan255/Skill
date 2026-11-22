@@ -1,4 +1,5 @@
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { deleteWithUndo } from "../lib/undo";
 import { SortableContext, arrayMove, useSortable, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CSS } from "@dnd-kit/utilities";
 import clsx from "clsx";
@@ -14,7 +15,7 @@ import { CategoryBadges } from "./categories";
 import { ExercisePicker } from "./exercise";
 import { DialogBackButton, Prop, Section } from "./ExerciseDialog";
 import { useHobby } from "./HobbyContext";
-import { Button, confirmDialog, CreateMoreToggle, IconButton, Modal, Muted, Textarea, useCreateMore } from "./ui";
+import { Button, CreateMoreToggle, IconButton, Modal, Muted, Textarea, useCreateMore } from "./ui";
 
 /** Creates an empty routine and opens it in the window right away. */
 export async function createAndOpenRoutine(hobbyId: number) {
@@ -70,10 +71,9 @@ function RoutineWindow({ routine, isNew }: { routine: Routine; isNew: boolean })
     const id = await mutate(() => repo.duplicateRoutine(routine.id));
     openRoutine(id);
   };
-  const remove = async () => {
-    if (!(await confirmDialog(`Routine „${routine.name}“ löschen? Übungen und Verlauf bleiben erhalten.`))) return;
+  const remove = () => {
     closeRoutine();
-    await mutate(() => repo.deleteRoutine(routine.id));
+    deleteWithUndo("routine", routine.id, routine.name, () => repo.deleteRoutine(routine.id));
   };
 
   return (

@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { deleteWithUndo } from "../lib/undo";
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
 import { SortableContext, arrayMove, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import { CalendarClock, Check, CircleCheck, GripVertical, Plus, Search, Trash2 } from "lucide-react";
@@ -11,7 +12,6 @@ import {
   Badge,
   Button,
   Chip,
-  confirmDialog,
   CreateMoreToggle,
   DateInput,
   IconButton,
@@ -235,9 +235,9 @@ export function GoalRow({
       <IconButton
         label="Löschen"
         className="size-6 opacity-0 group-hover:opacity-100"
-        onClick={async (e) => {
+        onClick={(e) => {
           e.stopPropagation();
-          if (await confirmDialog(`Ziel „${goal.name}“ löschen?`)) await mutate(() => repo.deleteGoal(goal.id));
+          deleteWithUndo("goal", goal.id, goal.name, () => repo.deleteGoal(goal.id));
         }}
       >
         <Trash2 size={13} />
@@ -334,10 +334,9 @@ function GoalModal({ goal, open, onClose }: { goal?: Goal; open: boolean; onClos
         goal && (
           <IconButton
             label="Löschen"
-            onClick={async () => {
-              if (!(await confirmDialog(`Ziel „${goal.name}“ löschen?`))) return;
+            onClick={() => {
               onClose();
-              await mutate(() => repo.deleteGoal(goal.id));
+              deleteWithUndo("goal", goal.id, goal.name, () => repo.deleteGoal(goal.id));
             }}
           >
             <Trash2 size={14} />

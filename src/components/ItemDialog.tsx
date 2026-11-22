@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { deleteWithUndo } from "../lib/undo";
 import { Check, ExternalLink, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as repo from "../db/repo";
@@ -9,7 +10,7 @@ import { closeItem, openItem, useUi } from "../lib/uiState";
 import { CategoryPicker } from "./categories";
 import { Prop, Section } from "./ExerciseDialog";
 import { useHobby } from "./HobbyContext";
-import { Button, confirmDialog, CreateMoreToggle, IconButton, Modal, Select, useCreateMore } from "./ui";
+import { Button, CreateMoreToggle, IconButton, Modal, Select, useCreateMore } from "./ui";
 
 /** Creates an empty list entry and opens it in the window. */
 export async function createAndOpenItem(hobbyId: number, categoryIds: number[] = []) {
@@ -78,10 +79,9 @@ function ItemWindow({ item, isNew }: { item: Item; isNew: boolean }) {
     await close();
     if (more) await createAndOpenItem(data.hobby.id, item.category_ids);
   };
-  const remove = async () => {
-    if (!(await confirmDialog(`„${item.title}“ löschen?`))) return;
+  const remove = () => {
     closeItem();
-    await mutate(() => repo.deleteItem(item.id));
+    deleteWithUndo("item", item.id, item.title, () => repo.deleteItem(item.id));
   };
 
   return (

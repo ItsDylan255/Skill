@@ -14,6 +14,7 @@ import {
   type TextareaHTMLAttributes,
 } from "react";
 import { createPortal } from "react-dom";
+import { Toaster, toast as sonnerToast } from "sonner";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
 
@@ -711,38 +712,28 @@ export function ConfirmHost() {
 
 // ---------- Toasts ----------
 
-type Toast = { id: number; text: string };
-let pushToast: ((t: string) => void) | null = null;
-
-export function toast(text: string) {
-  pushToast?.(text);
+/** Message bottom right (Sonner); `action` adds a button such as "Rückgängig". */
+export function toast(text: string, opts: { action?: { label: string; onClick: () => void }; duration?: number } = {}) {
+  sonnerToast(text, { duration: opts.duration ?? 3500, action: opts.action });
 }
 
 export function ToastHost() {
-  const [toasts, setToasts] = useState<Toast[]>([]);
-  useEffect(() => {
-    let n = 0;
-    pushToast = (text) => {
-      const id = ++n;
-      setToasts((t) => [...t, { id, text }]);
-      setTimeout(() => setToasts((t) => t.filter((x) => x.id !== id)), 3500);
-    };
-    return () => {
-      pushToast = null;
-    };
-  }, []);
-  return createPortal(
-    <div className="pointer-events-none fixed right-4 bottom-4 z-[60] flex flex-col gap-2">
-      {toasts.map((t) => (
-        <div
-          key={t.id}
-          className="pointer-events-auto rounded-lg border border-line bg-card px-4 py-2.5 text-sm shadow-lg"
-        >
-          {t.text}
-        </div>
-      ))}
-    </div>,
-    document.body,
+  return (
+    <Toaster
+      position="bottom-right"
+      gap={8}
+      offset={16}
+      toastOptions={{
+        unstyled: true,
+        classNames: {
+          toast:
+            "flex w-[var(--width)] items-center gap-3 rounded-lg border border-line bg-card px-4 py-3 text-sm text-fg shadow-lg/10",
+          title: "min-w-0 flex-1",
+          actionButton:
+            "ml-auto h-7 shrink-0 cursor-pointer rounded-md border border-input bg-bg px-2.5 text-xs font-medium text-fg shadow-xs/5 transition-colors hover:bg-elev dark:bg-white/[0.03]",
+        },
+      }}
+    />
   );
 }
 

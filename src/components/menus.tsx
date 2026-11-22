@@ -12,6 +12,7 @@ import {
   Settings,
   Trash2,
 } from "lucide-react";
+import { deleteWithUndo } from "../lib/undo";
 import { useNavigate } from "react-router-dom";
 import * as repo from "../db/repo";
 import type { Exercise, Hobby, Item, KnowledgeBase, Routine, Topic } from "../db/types";
@@ -21,7 +22,7 @@ import { openExercise, openHobbySettings, openItem, openRoutine, openTopic } fro
 import { deleteExercise } from "./ExerciseDialog";
 import { useHobby } from "./HobbyContext";
 import { createAndOpenTopic, setStage, STAGES } from "./TopicDialog";
-import { confirmDialog, MenuItem, MenuLabel, MenuSeparator, Popover, type Point } from "./ui";
+import { MenuItem, MenuLabel, MenuSeparator, Popover, type Point } from "./ui";
 
 /*
  * Right-click menus, like Slate's task menu: the same actions as in the item's
@@ -111,10 +112,7 @@ export function RoutineMenu({ routine, at, onClose }: MenuProps & { routine: Rou
       <MenuItem
         danger
         icon={<Trash2 size={14} />}
-        onClick={run(async () => {
-          if (!(await confirmDialog(`Routine „${routine.name}“ löschen? Übungen und Verlauf bleiben erhalten.`))) return;
-          await mutate(() => repo.deleteRoutine(routine.id));
-        })}
+        onClick={run(() => deleteWithUndo("routine", routine.id, routine.name, () => repo.deleteRoutine(routine.id)))}
       >
         Löschen
       </MenuItem>
@@ -123,9 +121,7 @@ export function RoutineMenu({ routine, at, onClose }: MenuProps & { routine: Rou
 }
 
 export function TopicMenu({ topic, at, onClose }: MenuProps & { topic: Topic }) {
-  const { d } = useHobby();
   const run = runner(onClose);
-  const below = d.subtree(topic.id).length - 1;
   return (
     <Popover anchor={at} onClose={onClose} className="w-56">
       <MenuItem icon={<PanelTop size={14} />} onClick={run(() => openTopic(topic.id))}>
@@ -145,10 +141,7 @@ export function TopicMenu({ topic, at, onClose }: MenuProps & { topic: Topic }) 
       <MenuItem
         danger
         icon={<Trash2 size={14} />}
-        onClick={run(async () => {
-          if (!(await confirmDialog(`„${topic.title}“${below ? ` mit ${below} Unterthemen` : ""} löschen?`))) return;
-          await mutate(() => repo.deleteTopic(topic.id));
-        })}
+        onClick={run(() => deleteWithUndo("topic", topic.id, topic.title, () => repo.deleteTopic(topic.id)))}
       >
         Löschen
       </MenuItem>
@@ -157,10 +150,9 @@ export function TopicMenu({ topic, at, onClose }: MenuProps & { topic: Topic }) 
 }
 
 export function PlanMenu({ kb, at, onClose }: MenuProps & { kb: KnowledgeBase }) {
-  const { d, base } = useHobby();
+  const { base } = useHobby();
   const navigate = useNavigate();
   const run = runner(onClose);
-  const count = d.planOutline(kb.id).length;
   return (
     <Popover anchor={at} onClose={onClose} className="w-56">
       <MenuItem icon={<PanelTop size={14} />} onClick={run(() => navigate(`${base}/plan/${kb.id}`))}>
@@ -173,10 +165,7 @@ export function PlanMenu({ kb, at, onClose }: MenuProps & { kb: KnowledgeBase })
       <MenuItem
         danger
         icon={<Trash2 size={14} />}
-        onClick={run(async () => {
-          if (!(await confirmDialog(`Plan „${kb.name}“ mit ${count} Themen löschen?`))) return;
-          await mutate(() => repo.deleteKnowledgeBase(kb.id));
-        })}
+        onClick={run(() => deleteWithUndo("knowledge_base", kb.id, kb.name, () => repo.deleteKnowledgeBase(kb.id)))}
       >
         Löschen
       </MenuItem>
@@ -212,10 +201,7 @@ export function ItemMenu({ item, at, onClose }: MenuProps & { item: Item }) {
       <MenuItem
         danger
         icon={<Trash2 size={14} />}
-        onClick={run(async () => {
-          if (!(await confirmDialog(`„${item.title}“ löschen?`))) return;
-          await mutate(() => repo.deleteItem(item.id));
-        })}
+        onClick={run(() => deleteWithUndo("item", item.id, item.title, () => repo.deleteItem(item.id)))}
       >
         Löschen
       </MenuItem>

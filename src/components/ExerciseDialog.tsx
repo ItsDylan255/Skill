@@ -16,6 +16,7 @@ import {
   Trash2,
   TrendingUp,
 } from "lucide-react";
+import { deleteWithUndo } from "../lib/undo";
 import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
 import { useNavigate } from "react-router-dom";
 import {
@@ -90,14 +91,15 @@ function useFileUnused() {
   return (f: Attachment) => f.kind !== "folder" && !data.attachments.some((a) => a.id !== f.id && a.path === f.path);
 }
 
-/** Asks, then deletes an exercise with everything in it, including attached files nothing else uses. */
-export async function deleteExercise(exercise: Exercise, data: HobbyData) {
-  if (!(await confirmDialog(`„${exercise.name}" mit allen Einträgen löschen?`))) return;
+/** Deletes an exercise with everything in it (undo for a few seconds), including attached files nothing else uses. */
+export function deleteExercise(exercise: Exercise, data: HobbyData) {
   const files = data.attachments.filter((a) => a.exercise_id === exercise.id);
   const unused = (f: Attachment) => f.kind !== "folder" && !data.attachments.some((a) => a.id !== f.id && a.path === f.path);
   closeExercise();
-  await mutate(() => repo.deleteExercise(exercise.id));
-  for (const f of files) if (unused(f)) await deleteAttachmentFile(f.path).catch(() => {});
+  deleteWithUndo("exercise", exercise.id, exercise.name, async () => {
+    await repo.deleteExercise(exercise.id);
+    for (const f of files) if (unused(f)) await deleteAttachmentFile(f.path).catch(() => {});
+  });
 }
 
 /** Arrow in a window title that returns to the window this one was opened from. */

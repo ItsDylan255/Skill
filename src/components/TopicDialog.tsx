@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { deleteWithUndo } from "../lib/undo";
 import { Check, Plus, Trash2 } from "lucide-react";
 import { useEffect, useRef, useState } from "react";
 import * as repo from "../db/repo";
@@ -7,7 +8,7 @@ import { mutate } from "../lib/store";
 import { closeTopic, openTopic, useUi } from "../lib/uiState";
 import { Prop, Section } from "./ExerciseDialog";
 import { useHobby } from "./HobbyContext";
-import { Button, confirmDialog, CreateMoreToggle, IconButton, Modal, ProgressRing, Select, useCreateMore } from "./ui";
+import { Button, CreateMoreToggle, IconButton, Modal, ProgressRing, Select, useCreateMore } from "./ui";
 
 /** Creates an empty plan item (optionally below another one) and opens it in the window. */
 export async function createAndOpenTopic(baseId: number, parentId: number | null = null) {
@@ -105,11 +106,9 @@ function TopicWindow({ topic, isNew }: { topic: Topic; isNew: boolean }) {
     await close();
     if (more) await createAndOpenTopic(topic.base_id, topic.parent_id);
   };
-  const remove = async () => {
-    const n = below.size - 1;
-    if (!(await confirmDialog(`„${topic.title}“${n ? ` mit ${n} Unterthemen` : ""} löschen?`))) return;
+  const remove = () => {
     closeTopic();
-    await mutate(() => repo.deleteTopic(topic.id));
+    deleteWithUndo("topic", topic.id, topic.title, () => repo.deleteTopic(topic.id));
   };
   const moveToPlan = async (baseId: number) => {
     await mutate(async () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState, useSyncExternalStore } from "react";
 import { listHobbies, loadHobbyData } from "../db/repo";
 import type { Hobby, HobbyData } from "../db/types";
+import { hidePending } from "./undo";
 
 // A global version number: every mutation bumps it and all queries reload.
 let version = 0;
@@ -49,4 +50,4 @@ function useQuery<T>(fn: () => Promise<T>, key: unknown) {
 export const useHobbies = () => useQuery<Hobby[]>(listHobbies, "hobbies");
 
 export const useHobbyData = (hobbyId: number) =>
-  useQuery<HobbyData | null>(() => loadHobbyData(hobbyId), hobbyId);
+  useQuery<HobbyData | null>(() => loadHobbyData(hobbyId).then((d) => d && hidePending(d)), hobbyId);
