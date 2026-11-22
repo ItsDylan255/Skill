@@ -6,6 +6,20 @@ Projekten mit demselben Inhalt. Wer an einer App etwas am Aussehen oder an der B
 ändert die andere mit oder trägt die Abweichung hier ein.
 
 Slate ist die Vorlage. Neue Bausteine entstehen zuerst so, wie Slate sie hat.
+**Self** gehört zur selben Familie und übernimmt Abschnitt 1 unverändert (eigene `DESIGN.md` mit den Abweichungen).
+
+### Bibliotheken
+
+Alle drei Apps nutzen dieselben Bibliotheken für dieselben Aufgaben – das Aussehen kommt immer aus den eigenen Design-Werten.
+
+| Aufgabe | Bibliothek | Skill | Slate | Self |
+|---|---|---|---|---|
+| Fenster, Menüs (Fokus, Esc-Reihenfolge, Positionierung) | [Base UI](https://base-ui.com) `@base-ui/react` | ✓ | offen | offen |
+| Befehlssuche (Strg+K) | [cmdk](https://github.com/pacocoursey/cmdk) | ✓ | offen | offen |
+| Meldungen unten rechts, mit Knopf („Rückgängig“) | [Sonner](https://sonner.emilkowal.ski) | ✓ | offen | offen |
+| Rollende Zahlen (Timer, Statistiken) | [NumberFlow](https://number-flow.barvian.me) `@number-flow/react` | ✓ | offen | offen |
+| Symbole | Lucide | ✓ | ✓ | ✓ |
+| Vorlage für neue Bausteine | [shadcn/ui](https://ui.shadcn.com) – abschauen, nicht übernehmen | | | |
 
 ---
 
@@ -54,23 +68,25 @@ Achtung: `muted` bedeutet in Slate eine **Fläche**, im Skill den **Nebentext**.
 | Feld ohne Rahmen | in der Eigenschaften-Spalte: erst beim Hover sichtbar, h-7 |
 | Auswahlfeld | eigenes Menü statt System-Dropdown, Auf-/Ab-Symbol rechts, aktive Wahl mit Haken |
 | Datumsauswahl | eigener Kalender, Woche ab Montag, heute grau hinterlegt, gewählt dunkel gefüllt. Unten Schnellwahl: Heute, Morgen, Nächste Woche, Entfernen. ✕ im Feld beim Hover |
-| Menü (Popover) | `rounded-lg`, 1 px Rahmen, `p-1`, Einträge mit Symbol links, Trennlinie `elev`. Öffnet unter dem Knopf oder an der Maus, klappt nach oben, wenn unten kein Platz ist |
+| Menü (Popover) | `rounded-lg`, 1 px Rahmen, `p-1`, Einträge mit Symbol links, Trennlinie `elev`. Öffnet unter dem Knopf oder an der Maus, klappt um, wenn kein Platz ist. Pfeiltasten/Pos1/Ende wandern durch die Einträge, Enter wählt |
 | Etikett (Chip) | h-5.5, Schrift xs, Rahmen `chip-border`, optional farbiger Punkt |
 | Filter-Chip | h-7 in der Werkzeugleiste, aktiv mit Fläche und stärkerem Rahmen |
 | Umschalter (Segmented) | h-7 Leiste mit h-6 Einträgen, aktiver Eintrag mit Fläche und Schatten |
-| Fenster | oben bei 10 % Höhe, Abdunklung 32 %, Kopfzeile mit Pfad/Titel, Aktionen und ✕ rechts |
+| Fenster | oben bei 10 % Höhe, Abdunklung 32 %, Kopfzeile mit Pfad/Titel, Aktionen und ✕ rechts. Fokus bleibt im Fenster und kehrt beim Schließen zurück |
+| Meldung | unten rechts, Karte mit Rahmen, optional ein Knopf rechts (z. B. „Rückgängig“) |
+| Zahlen | Werte, die sich live ändern (Timer, Tempo, Zähler), rollen weich zum neuen Wert |
 
 ### Bedienung
 
-- **Esc** schließt das oberste Menü oder Fenster – immer nur eins.
+- **Esc** schließt das oberste Menü oder Fenster – immer nur eins. Ist in einem Fenster ein Menü offen, schließt Esc nur das Menü.
 - **Klick daneben** schließt Menüs und Fenster.
 - **Klick auf eine Zeile oder Karte** öffnet sie. Kleine Knöpfe in der Zeile (Haken, Stand) handeln direkt, ohne zu öffnen.
 - **Rechtsklick** auf jedes Element einer Liste öffnet sein Menü: zuerst „Öffnen“ und die Hauptaktion, dann Bearbeiten, zuletzt rot „Löschen“.
   Das Browser-Menü (Neu laden, Untersuchen) erscheint nie. In Textfeldern bleibt Kopieren/Einfügen.
-- **Strg+K** öffnet die Befehlssuche: ohne Eingabe Aktionen und Ziele zum Hinspringen, mit Eingabe gefundene Einträge zuerst.
+- **Strg+K** öffnet die Befehlssuche: ohne Eingabe Aktionen und Ziele zum Hinspringen, mit Eingabe gefundene Einträge zuerst. Die Suche ist unscharf („qntz“ findet „Quintenzirkel“).
 - **Ziehen** startet erst nach ein paar Pixeln Bewegung, nie nach Zeit (Gedrückthalten funktioniert im App-Fenster nicht zuverlässig).
   Während des Ziehens zeigt der Mauszeiger überall die greifende Hand. Der Klick am Ende des Ziehens öffnet nichts.
-- **Löschen** fragt immer nach.
+- **Löschen** passiert sofort, eine Meldung bietet 6 Sekunden lang „Rückgängig“ an; erst danach wird wirklich gelöscht. Nachfragen nur noch, wo nichts rückgängig zu machen ist (z. B. Hobby löschen). In Slate fragt Löschen noch nach.
 - **Text** lässt sich nur in Feldern markieren (App, kein Dokument).
 - **Speichern** passiert automatisch beim Verlassen eines Feldes. Es gibt keinen Speichern-Knopf.
 - **Neu anlegen** öffnet das Fenster des neuen Elements. Ohne Namen geschlossen, wird es verworfen. „Weitere erstellen“ hält das Fenster für das nächste offen.
