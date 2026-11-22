@@ -4,7 +4,7 @@
 
 Desktop-App, um Hobbys zu üben und zu lernen – wie ein Projekt gesteuert, nur für Fähigkeiten.
 Gehört zur selben Familie wie [Slate](https://github.com/ItsDylan255/Slate) (Projekte) und
-[Self](https://github.com/ItsDylan255/Self); gemeinsame Gestaltung siehe [DESIGN.md](DESIGN.md).
+Self; gemeinsame Gestaltung siehe [DESIGN.md](DESIGN.md).
 
 ## Bereiche eines Hobbys
 
