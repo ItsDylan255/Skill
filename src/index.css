@@ -1,0 +1,160 @@
+@import "tailwindcss";
+@import "@fontsource-variable/geist";
+@import "@fontsource-variable/geist-mono";
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/*
+ * Design values shared with Slate (the project manager): same greys, borders, radii,
+ * focus ring and cards, so both apps look and feel alike. Names differ from Slate's
+ * (e.g. --muted is the secondary text colour here), the values are the same.
+ * The hobby colour (--accent) is only a small highlight.
+ */
+:root {
+  --radius: 0.625rem;
+  --bg: #ffffff;
+  --panel: #fafafa;
+  --card: #ffffff;
+  --elev: rgb(0 0 0 / 4%);
+  --line: rgb(0 0 0 / 8%);
+  --input: rgb(0 0 0 / 10%);
+  --ring: #a3a3a3;
+  --fg: #262626;
+  --muted: #686868;
+  --sidebar-fg: #727272;
+  --primary: #262626;
+  --primary-fg: #fafafa;
+  --bar: #525252;
+  --accent: #6366f1;
+  --ok: #10b981;
+  --warn: #d97706;
+  --bad: #dc2626;
+  --bad-fg: #b91c1c;
+  --icon: #8a8a8a;
+  --chip-border: #00000017;
+  --chip-border-hover: #00000029;
+  --chip-fg: #404040;
+
+  /* cards in a grid (Slate's board cards) */
+  --tile: #ffffff;
+  --tile-border: #00000014;
+  --tile-border-hover: #0000002e;
+  --tile-shadow: 0 1px 2px #0000000a;
+  color-scheme: light;
+}
+
+.dark {
+  --bg: #141414;
+  --panel: #111111;
+  --card: #191919;
+  --elev: rgb(255 255 255 / 4%);
+  --line: rgb(255 255 255 / 6%);
+  --input: rgb(255 255 255 / 8%);
+  --ring: #737373;
+  --fg: #f5f5f5;
+  --muted: #818181;
+  --sidebar-fg: #a3a3a3;
+  --primary: #f5f5f5;
+  --primary-fg: #262626;
+  --bar: #a3a3a3;
+  --ok: #34d399;
+  --warn: #fbbf24;
+  --bad: #f05656;
+  --bad-fg: #f87171;
+  --chip-border: #ffffff17;
+  --chip-border-hover: #ffffff29;
+  --chip-fg: #cfcfcf;
+
+  --tile: #1c1c1c;
+  --tile-border: transparent;
+  --tile-border-hover: #ffffff2e;
+  --tile-shadow: 0 1px 2px #00000033, 0 4px 12px -4px #00000059;
+  color-scheme: dark;
+}
+
+@theme inline {
+  --color-bg: var(--bg);
+  --color-panel: var(--panel);
+  --color-card: var(--card);
+  --color-elev: var(--elev);
+  --color-line: var(--line);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-fg: var(--fg);
+  --color-muted: var(--muted);
+  --color-sidebar-fg: var(--sidebar-fg);
+  --color-primary: var(--primary);
+  --color-primary-fg: var(--primary-fg);
+  --color-bar: var(--bar);
+  --color-accent: var(--accent);
+  --color-ok: var(--ok);
+  --color-warn: var(--warn);
+  --color-bad: var(--bad);
+  --color-bad-fg: var(--bad-fg);
+  --color-icon: var(--icon);
+  --color-chip-border: var(--chip-border);
+  --color-chip-border-hover: var(--chip-border-hover);
+  --color-chip-fg: var(--chip-fg);
+  --color-tile: var(--tile);
+  --color-tile-border: var(--tile-border);
+  --color-tile-border-hover: var(--tile-border-hover);
+  --shadow-tile: var(--tile-shadow);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --font-sans: "Geist Variable", ui-sans-serif, system-ui, "Segoe UI", sans-serif;
+  --font-mono: "Geist Mono Variable", ui-monospace, Consolas, monospace;
+}
+
+@layer base {
+  * {
+    border-color: var(--line);
+    outline-color: color-mix(in srgb, var(--ring) 50%, transparent);
+  }
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+  body {
+    margin: 0;
+    background: var(--panel);
+    color: var(--fg);
+    font-family: var(--font-sans);
+    font-size: 14px;
+    -webkit-font-smoothing: antialiased;
+    /* an app, not a document: only fields and marked text can be selected */
+    user-select: none;
+  }
+  h1,
+  h2,
+  h3 {
+    font-weight: 600;
+    letter-spacing: -0.015em;
+  }
+  input,
+  textarea,
+  [contenteditable],
+  .selectable {
+    user-select: text;
+  }
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: var(--line) transparent;
+  }
+}
+
+/* show the grabbing hand everywhere while something is dragged */
+body:has([aria-pressed="true"][aria-roledescription="sortable"]),
+body:has([aria-pressed="true"][aria-roledescription="sortable"]) * {
+  cursor: grabbing !important;
+}
+
+input[type="number"]::-webkit-inner-spin-button {
+  opacity: 0.4;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
