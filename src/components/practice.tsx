@@ -1,4 +1,5 @@
 import clsx from "clsx";
+import { FlowClock, Num } from "./flow";
 import { Minus, Pause, Play, Plus, RotateCcw, Volume2 } from "lucide-react";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { Metronome } from "../lib/audio";
@@ -86,9 +87,7 @@ export function TimerDisplay({
         </svg>
         <div className="absolute inset-0 flex flex-col items-center justify-center">
           <span className={clsx("tabular text-4xl font-semibold", overtime && "text-ok")}>
-            {remaining != null
-              ? `${overtime ? "+" : ""}${formatClock(Math.abs(remaining))}`
-              : formatClock(elapsed)}
+            {remaining != null ? <FlowClock sec={Math.abs(remaining)} sign={overtime ? "+" : ""} /> : <FlowClock sec={elapsed} />}
           </span>
           <span className="mt-1 flex items-center gap-1 text-xs text-muted">
             {onAdjust && targetSec != null && (
@@ -183,6 +182,7 @@ export function MetronomePanel({
   const metro = useRef<Metronome | null>(null);
   const [running, setRunning] = useState(false);
   const [beat, setBeat] = useState(-1);
+  const [editingBpm, setEditingBpm] = useState(false);
   const [settings, setSettingsState] = useState(() => {
     const s = loadMetroSettings();
     const measure = initial?.measure && MEASURES.some((m) => m.value === initial.measure) ? initial.measure : s.measure;
@@ -258,16 +258,33 @@ export function MetronomePanel({
           <Minus size={14} />
         </IconButton>
         <div className="flex flex-col items-center">
-          <input
-            className="tabular w-20 bg-transparent text-center text-3xl font-semibold outline-none"
-            inputMode="numeric"
-            value={bpm}
-            onChange={(e) => {
-              const v = Number(e.target.value);
-              if (!Number.isNaN(v)) onBpmChange(v);
-            }}
-            onBlur={() => set(bpm)}
-          />
+          {editingBpm ? (
+            <input
+              autoFocus
+              onFocus={(e) => e.target.select()}
+              className="tabular w-20 bg-transparent text-center text-3xl font-semibold outline-none"
+              inputMode="numeric"
+              value={bpm}
+              onChange={(e) => {
+                const v = Number(e.target.value);
+                if (!Number.isNaN(v)) onBpmChange(v);
+              }}
+              onBlur={() => {
+                set(bpm);
+                setEditingBpm(false);
+              }}
+              onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+            />
+          ) : (
+            <button
+              type="button"
+              title="Tempo eingeben"
+              onClick={() => setEditingBpm(true)}
+              className="tabular w-20 cursor-text text-center text-3xl font-semibold"
+            >
+              <Num value={bpm} />
+            </button>
+          )}
           <span className="text-[10px] text-muted">BPM</span>
         </div>
         <IconButton label="+1" onClick={() => set(bpm + 1)}>

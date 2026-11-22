@@ -1,4 +1,5 @@
 import { DndContext, PointerSensor, closestCenter, useSensor, useSensors, type DragEndEvent } from "@dnd-kit/core";
+import { Num } from "../components/flow";
 import { deleteWithUndo } from "../lib/undo";
 import { PlanMenu, TopicMenu } from "../components/menus";
 import { SortableContext, arrayMove, rectSortingStrategy, verticalListSortingStrategy } from "@dnd-kit/sortable";
@@ -156,7 +157,7 @@ function PlanCard({ kb }: { kb: KnowledgeBase }) {
         <div className="flex items-center gap-3">
           <StageBar topics={topics} />
           <span className="tabular shrink-0 text-xs text-muted">
-            {understood}/{topics.length}
+            <Num value={understood} />/{topics.length}
           </span>
         </div>
       )}
@@ -364,7 +365,7 @@ function PlanBaseView({ kb }: { kb: KnowledgeBase }) {
             <span className="flex w-56 shrink-0 items-center gap-3 text-sm text-muted">
               <StageBar topics={topics} />
               <span className="tabular shrink-0">
-                {done}/{topics.length}
+                <Num value={done} />/{topics.length}
               </span>
             </span>
           )}

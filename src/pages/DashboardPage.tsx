@@ -1,4 +1,5 @@
 import { CalendarDays, CircleCheck, Clock, Flame, ListChecks, Play } from "lucide-react";
+import { FlowMinutes, Num } from "../components/flow";
 import { useMemo, type ReactNode } from "react";
 import { Link, useNavigate } from "react-router-dom";
 import { CategoryBadges } from "../components/categories";
@@ -60,15 +61,15 @@ export function DashboardPage() {
         ) : (
           <div className="flex flex-col gap-4">
             <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-              <StatCard icon={<Flame size={16} />} label="Serie" value={`${stats.streak} ${stats.streak === 1 ? "Tag" : "Tage"}`} />
+              <StatCard icon={<Flame size={16} />} label="Serie" value={<Num value={stats.streak} suffix={stats.streak === 1 ? " Tag" : " Tage"} />} />
               <StatCard
                 icon={<CalendarDays size={16} />}
                 label="Letzte 7 Tage"
-                value={formatMinutes(stats.week)}
+                value={<FlowMinutes min={stats.week} />}
                 hint={`an ${stats.weekDays} von 7 Tagen`}
               />
-              <StatCard icon={<Clock size={16} />} label="Gesamt" value={formatMinutes(stats.total)} />
-              <StatCard icon={<ListChecks size={16} />} label="Übungen in Routinen" value={String(active.length)} />
+              <StatCard icon={<Clock size={16} />} label="Gesamt" value={<FlowMinutes min={stats.total} />} />
+              <StatCard icon={<ListChecks size={16} />} label="Übungen in Routinen" value={<Num value={active.length} />} />
             </div>
 
             <div className="grid grid-cols-1 gap-4 xl:grid-cols-[1fr_24rem]">
@@ -228,7 +229,7 @@ export function DashboardPage() {
   );
 }
 
-function StatCard({ icon, label, value, hint }: { icon: ReactNode; label: string; value: string; hint?: string }) {
+function StatCard({ icon, label, value, hint }: { icon: ReactNode; label: string; value: ReactNode; hint?: string }) {
   return (
     <Card className="p-4">
       <div className="flex items-center gap-2 text-xs text-muted">
