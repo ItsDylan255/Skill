@@ -4,7 +4,7 @@ import {
   Children,
   isValidElement,
   useEffect,
-  useLayoutEffect,
+  useMemo,
   useRef,
   useState,
   type ButtonHTMLAttributes,
@@ -13,7 +13,8 @@ import {
   type SelectHTMLAttributes,
   type TextareaHTMLAttributes,
 } from "react";
-import { createPortal } from "react-dom";
+import { Dialog as BaseDialog } from "@base-ui/react/dialog";
+import { Popover as BasePopover } from "@base-ui/react/popover";
 import { Toaster, toast as sonnerToast } from "sonner";
 
 type Variant = "primary" | "secondary" | "ghost" | "danger";
@@ -319,33 +320,10 @@ export function Field({
   );
 }
 
-/** Open dialogs and popovers, bottom to top: only the topmost reacts to Esc and outside clicks. */
-const layers: number[] = [];
-let nextLayer = 1;
-
-function useLayer(active: boolean, onClose: () => void) {
-  const closeRef = useRef(onClose);
-  closeRef.current = onClose;
-  const id = useRef(0);
-  useEffect(() => {
-    if (!active) return;
-    id.current = nextLayer++;
-    layers.push(id.current);
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape" && layers[layers.length - 1] === id.current) {
-        e.stopPropagation();
-        closeRef.current();
-      }
-    };
-    window.addEventListener("keydown", onKey, true);
-    return () => {
-      layers.splice(layers.indexOf(id.current), 1);
-      window.removeEventListener("keydown", onKey, true);
-    };
-  }, [active]);
-  return () => layers[layers.length - 1] === id.current;
-}
-
+/**
+ * Window on top of the page. Built on Base UI's Dialog: focus stays inside, Esc and a click
+ * outside close only the topmost window, focus returns to where it was.
+ */
 export function Modal({
   open,
   onClose,
@@ -365,36 +343,50 @@ export function Modal({
   width?: string;
   noPadding?: boolean;
 }) {
-  useLayer(open, onClose);
-  if (!open) return null;
-  return createPortal(
-    <div
-      className="fixed inset-0 z-50 flex items-start justify-center bg-black/32 p-6 pt-[10vh] backdrop-blur-[1px]"
-      onMouseDown={(e) => e.target === e.currentTarget && onClose()}
+  return (
+    <BaseDialog.Root
+      open={open}
+      onOpenChange={(o, details) => {
+        if (o) return;
+        // Esc with a menu open closes only the menu
+        if (details.reason === "escape-key" && openPopovers > 0) return;
+        onClose();
+      }}
     >
-      <div
-        role="dialog"
-        aria-modal="true"
-        className={clsx("flex max-h-[84vh] w-full flex-col rounded-2xl border border-line bg-card shadow-2xl/10", width)}
-      >
-        <div className="flex shrink-0 items-center gap-2 border-b border-line px-5 py-3.5">
-          <h2 className="min-w-0 flex-1 truncate text-base font-semibold">{title}</h2>
-          {headerRight}
-          <IconButton label="Schließen (Esc)" onClick={onClose}>
-            <X size={16} />
-          </IconButton>
+      <BaseDialog.Portal>
+        <BaseDialog.Backdrop className="fixed inset-0 z-50 bg-black/32 backdrop-blur-[1px] transition-opacity duration-150 data-ending-style:opacity-0 data-starting-style:opacity-0" />
+        <div className="pointer-events-none fixed inset-0 z-50 flex items-start justify-center p-6 pt-[10vh]">
+          <BaseDialog.Popup
+            // keyboard: focus moves into the window; mouse: fields with autoFocus keep it
+            initialFocus={(type) => (type === "keyboard" ? true : undefined)}
+            className={clsx(
+              "pointer-events-auto flex max-h-[84vh] w-full flex-col rounded-2xl border border-line bg-card shadow-2xl/10 outline-none",
+              "transition-[opacity,scale] duration-150 ease-out data-ending-style:scale-[0.98] data-ending-style:opacity-0 data-starting-style:scale-[0.98] data-starting-style:opacity-0",
+              width,
+            )}
+          >
+            <div className="flex shrink-0 items-center gap-2 border-b border-line px-5 py-3.5">
+              <BaseDialog.Title className="min-w-0 flex-1 truncate text-base font-semibold">{title}</BaseDialog.Title>
+              {headerRight}
+              <IconButton label="Schließen (Esc)" onClick={onClose}>
+                <X size={16} />
+              </IconButton>
+            </div>
+            <div className={clsx("min-h-0 flex-1 overflow-y-auto", !noPadding && "flex flex-col gap-3 p-5")}>
+              {children}
+            </div>
+            {footer && <div className="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
+          </BaseDialog.Popup>
         </div>
-        <div className={clsx("min-h-0 flex-1 overflow-y-auto", !noPadding && "flex flex-col gap-3 p-5")}>
-          {children}
-        </div>
-        {footer && <div className="flex shrink-0 justify-end gap-2 border-t border-line px-5 py-3">{footer}</div>}
-      </div>
-    </div>,
-    document.body,
+      </BaseDialog.Portal>
+    </BaseDialog.Root>
   );
 }
 
 export type Point = { x: number; y: number };
+
+/** number of open menus; a window ignores Esc while one is open */
+let openPopovers = 0;
 
 /** Right-click menu state: spread `onContextMenu` on the row, render a Popover at `at`. */
 export function useContextMenu() {
@@ -410,7 +402,25 @@ export function useContextMenu() {
   };
 }
 
-/** Small menu that opens below a button or at the mouse; closes on outside click or Esc. */
+/** Arrow keys move between menu entries, like in Slate's and every native menu. */
+function moveFocus(e: React.KeyboardEvent<HTMLElement>) {
+  if (e.key !== "ArrowDown" && e.key !== "ArrowUp" && e.key !== "Home" && e.key !== "End") return;
+  const items = [...e.currentTarget.querySelectorAll<HTMLElement>("[data-menu-item]:not(:disabled)")];
+  if (!items.length) return;
+  const i = items.indexOf(document.activeElement as HTMLElement);
+  const next =
+    e.key === "Home" ? 0
+    : e.key === "End" ? items.length - 1
+    : e.key === "ArrowDown" ? (i + 1) % items.length
+    : i <= 0 ? items.length - 1 : i - 1;
+  e.preventDefault();
+  items[next].focus();
+}
+
+/**
+ * Small menu below a button or at the mouse (right-click). Built on Base UI's Popover:
+ * flips and shifts to stay on screen, Esc and a click outside close only the topmost one.
+ */
 export function Popover({
   anchor,
   onClose,
@@ -427,58 +437,55 @@ export function Popover({
   matchWidth?: boolean;
 }) {
   const ref = useRef<HTMLDivElement>(null);
-  const isTop = useLayer(true, onClose);
-  const [pos, setPos] = useState({ left: 0, top: 0, ready: false });
   const el = anchor instanceof HTMLElement ? anchor : null;
-
-  useLayoutEffect(() => {
-    const box = ref.current;
-    if (!box) return;
-    const p = anchor as Point;
-    const r = el ? el.getBoundingClientRect() : { left: p.x, top: p.y, bottom: p.y };
-    const w = box.offsetWidth;
-    const h = box.offsetHeight;
-    const below = el ? r.bottom + 4 : r.bottom;
-    setPos({
-      left: Math.max(8, Math.min(r.left, window.innerWidth - w - 8)),
-      top: below + h > window.innerHeight - 8 ? Math.max(8, r.top - h - (el ? 4 : 0)) : below,
-      ready: true,
-    });
-  }, [anchor]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  // autoFocus does not work while the menu is still hidden for measuring
   useEffect(() => {
-    if (pos.ready) ref.current?.querySelector<HTMLInputElement>("input")?.focus();
-  }, [pos.ready]);
+    openPopovers++;
+    // counted down a moment later, so the Esc that closes the menu doesn't also reach the window
+    return () => void setTimeout(() => openPopovers--, 0);
+  }, []);
+  const virtual = useMemo(() => {
+    if (anchor instanceof HTMLElement) return null;
+    const { x, y } = anchor;
+    return { getBoundingClientRect: () => DOMRect.fromRect({ x, y, width: 0, height: 0 }) };
+  }, [anchor]);
 
-  useEffect(() => {
-    const onDown = (e: MouseEvent) => {
-      const t = e.target as Node;
-      if (!isTop() || ref.current?.contains(t) || el?.contains(t)) return;
-      onClose();
-    };
-    window.addEventListener("mousedown", onDown);
-    return () => window.removeEventListener("mousedown", onDown);
-  });
-
-  return createPortal(
-    <div
-      ref={ref}
-      style={{
-        left: pos.left,
-        top: pos.top,
-        visibility: pos.ready ? "visible" : "hidden",
-        minWidth: matchWidth && el ? el.offsetWidth : undefined,
+  return (
+    <BasePopover.Root
+      open
+      onOpenChange={(open, details) => {
+        if (open) return;
+        // a click on the button that opened the menu toggles it there; don't close twice
+        if (details.reason === "outside-press" && el?.contains(details.event.target as Node)) return;
+        onClose();
       }}
-      onContextMenu={(e) => e.preventDefault()}
-      className={clsx(
-        "fixed z-[70] max-h-[70vh] overflow-y-auto rounded-lg border border-line bg-card p-1 text-sm shadow-lg/10",
-        className,
-      )}
     >
-      {children}
-    </div>,
-    document.body,
+      <BasePopover.Portal>
+        <BasePopover.Positioner
+          anchor={el ?? virtual}
+          side="bottom"
+          align="start"
+          sideOffset={el ? 4 : 0}
+          collisionPadding={8}
+          className="z-[70] outline-none"
+        >
+          <BasePopover.Popup
+            ref={ref}
+            initialFocus={(type) => ref.current?.querySelector<HTMLInputElement>("input") ?? (type === "keyboard" ? true : undefined)}
+            finalFocus={el ? true : false}
+            onKeyDown={moveFocus}
+            onContextMenu={(e) => e.preventDefault()}
+            style={{ minWidth: matchWidth && el ? el.offsetWidth : undefined }}
+            className={clsx(
+              "max-h-[70vh] overflow-y-auto rounded-lg border border-line bg-card p-1 text-sm shadow-lg/10 outline-none",
+              "origin-(--transform-origin) transition-[opacity,scale] duration-100 ease-out data-ending-style:scale-[0.97] data-ending-style:opacity-0 data-starting-style:scale-[0.97] data-starting-style:opacity-0",
+              className,
+            )}
+          >
+            {children}
+          </BasePopover.Popup>
+        </BasePopover.Positioner>
+      </BasePopover.Portal>
+    </BasePopover.Root>
   );
 }
 
@@ -500,10 +507,11 @@ export function MenuItem({
   return (
     <button
       type="button"
+      data-menu-item
       onClick={onClick}
       className={clsx(
-        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left",
-        danger ? "text-bad-fg hover:bg-bad/8" : "hover:bg-elev",
+        "flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left outline-none",
+        danger ? "text-bad-fg hover:bg-bad/8 focus-visible:bg-bad/8" : "hover:bg-elev focus-visible:bg-elev",
         active && "bg-elev font-medium",
       )}
     >
