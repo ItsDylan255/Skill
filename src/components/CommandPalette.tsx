@@ -1,4 +1,3 @@
-import clsx from "clsx";
 import {
   Bookmark,
   Flag,
@@ -14,7 +13,8 @@ import {
   SlidersHorizontal,
   Sun,
 } from "lucide-react";
-import { useEffect, useMemo, useRef, useState, type ReactNode } from "react";
+import { Command, defaultFilter } from "cmdk";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { useLocation, useNavigate } from "react-router-dom";
 import * as repo from "../db/repo";
 import { mutate, useHobbies } from "../lib/store";
@@ -139,20 +139,16 @@ export function CommandPaletteHost() {
   );
 }
 
-/** Command palette like Slate's: find exercises, topics, entries … and run actions. */
+/** Command palette like Slate's, built on cmdk: fuzzy search ("qntz" finds Quintenzirkel), arrow keys, Enter. */
 function CommandPalette() {
-  const { data, d, base } = useHobby();
+  const { data, base } = useHobby();
   const { data: hobbies = [] } = useHobbies();
   const navigate = useNavigate();
   const [q, setQ] = useState("");
-  const [index, setIndex] = useState(0);
-  const listRef = useRef<HTMLDivElement>(null);
   const close = () => setUi({ paletteOpen: false });
   const hobby = data.hobby;
 
-  const entries = useMemo<Entry[]>(() => {
-    const query = q.trim().toLowerCase();
-    const match = (...s: (string | null | undefined)[]) => !query || s.some((x) => x?.toLowerCase().includes(query));
+  const groups = useMemo(() => {
     const hidden = hiddenTabs(hobby);
     const dark = document.documentElement.classList.contains("dark");
 
@@ -174,126 +170,111 @@ function CommandPalette() {
       },
       { id: "a-item", group: "Aktionen", icon: <Plus size={14} />, label: "Neuer Merklisten-Eintrag", run: () => createAndOpenItem(hobby.id) },
       { id: "a-hset", group: "Aktionen", icon: <SlidersHorizontal size={14} />, label: `Einstellungen: ${hobby.name}`, run: () => openHobbySettings(hobby.id) },
-      { id: "a-set", group: "Aktionen", icon: <Settings size={14} />, label: "Einstellungen", run: openSettings },
-      { id: "a-theme", group: "Aktionen", icon: dark ? <Sun size={14} /> : <Moon size={14} />, label: dark ? "Heller Modus" : "Dunkler Modus", run: () => setTheme(dark ? "light" : "dark") },
-      { id: "a-side", group: "Aktionen", icon: <PanelLeft size={14} />, label: "Seitenleiste ein/aus", run: toggleSidebar },
-    ].filter((a) => match(a.label));
+      { id: "a-set", group: "Aktionen", icon: <Settings size={14} />, label: "Einstellungen", hint: "Strg ,", run: openSettings },
+      { id: "a-theme", group: "Aktionen", icon: dark ? <Sun size={14} /> : <Moon size={14} />, label: dark ? "Heller Modus" : "Dunkler Modus", hint: "Strg D", run: () => setTheme(dark ? "light" : "dark") },
+      { id: "a-side", group: "Aktionen", icon: <PanelLeft size={14} />, label: "Seitenleiste ein/aus", hint: "Strg B", run: toggleSidebar },
+    ];
 
     const sections: Entry[] = tabOrder(hobby)
-      .filter((t) => !hidden.includes(t.id) && match(t.label))
+      .filter((t) => !hidden.includes(t.id))
       .map((t) => ({ id: "s-" + t.id, group: hobby.name, icon: <span className="[&_svg]:size-3.5">{t.icon}</span>, label: t.label, run: () => navigate(base + t.path) }));
 
     const otherHobbies: Entry[] = hobbies
-      .filter((h) => h.id !== hobby.id && match(h.name))
+      .filter((h) => h.id !== hobby.id)
       .map((h) => ({ id: "h-" + h.id, group: "Hobbys", icon: <HobbyIcon name={h.icon} size={14} />, label: h.name, run: () => navigate(`/h/${h.id}`) }));
 
-    if (!query) return [...actions, ...sections, ...otherHobbies];
-
     const found: Entry[] = [
-      ...data.exercises
-        .filter((e) => match(e.name, e.description))
-        .map((e) => ({
-          id: "e-" + e.id,
-          group: "Gefunden",
-          icon: e.kind === "song" ? <Music size={14} /> : <ListChecks size={14} />,
-          label: e.name,
-          hint: e.kind === "song" ? "Song" : e.status === "archived" ? "Übung · archiviert" : "Übung",
-          run: () => openExercise(e.id),
-        })),
-      ...data.routines
-        .filter((r) => match(r.name, r.description))
-        .map((r) => ({ id: "r-" + r.id, group: "Gefunden", icon: <Repeat size={14} />, label: r.name, hint: "Routine", run: () => openRoutine(r.id) })),
-      ...data.knowledgeBases
-        .filter((k) => match(k.name))
-        .map((k) => ({ id: "k-" + k.id, group: "Gefunden", icon: <MapIcon size={14} />, label: k.name, hint: "Plan", run: () => navigate(`${base}/plan/${k.id}`) })),
-      ...data.topics
-        .filter((t) => match(t.title, t.content))
-        .map((t) => ({
-          id: "t-" + t.id,
-          group: "Gefunden",
-          icon: <StageButton topic={t} />,
-          label: t.title || "Ohne Titel",
-          hint: data.knowledgeBases.find((k) => k.id === t.base_id)?.name,
-          run: () => openTopic(t.id),
-        })),
-      ...data.items
-        .filter((i) => match(i.title, i.notes, i.url))
-        .map((i) => ({ id: "i-" + i.id, group: "Gefunden", icon: <Bookmark size={14} />, label: i.title, hint: "Merkliste", run: () => openItem(i.id) })),
-      ...data.goals
-        .filter((g) => match(g.name, g.description))
-        .map((g) => ({ id: "g-" + g.id, group: "Gefunden", icon: <Flag size={14} />, label: g.name, hint: "Ziel", run: () => navigate(`${base}/goals`) })),
-    ].slice(0, 40);
+      ...data.exercises.map((e) => ({
+        id: "e-" + e.id,
+        group: "Gefunden",
+        icon: e.kind === "song" ? <Music size={14} /> : <ListChecks size={14} />,
+        label: e.name,
+        hint: e.kind === "song" ? "Song" : e.status === "archived" ? "Übung · archiviert" : "Übung",
+        run: () => openExercise(e.id),
+      })),
+      ...data.routines.map((r) => ({ id: "r-" + r.id, group: "Gefunden", icon: <Repeat size={14} />, label: r.name, hint: "Routine", run: () => openRoutine(r.id) })),
+      ...data.knowledgeBases.map((k) => ({ id: "k-" + k.id, group: "Gefunden", icon: <MapIcon size={14} />, label: k.name, hint: "Plan", run: () => navigate(`${base}/plan/${k.id}`) })),
+      ...data.topics.map((t) => ({
+        id: "t-" + t.id,
+        group: "Gefunden",
+        icon: <StageButton topic={t} />,
+        label: t.title || "Ohne Titel",
+        hint: data.knowledgeBases.find((k) => k.id === t.base_id)?.name,
+        run: () => openTopic(t.id),
+      })),
+      ...data.items.map((i) => ({ id: "i-" + i.id, group: "Gefunden", icon: <Bookmark size={14} />, label: i.title, hint: "Merkliste", run: () => openItem(i.id) })),
+      ...data.goals.map((g) => ({ id: "g-" + g.id, group: "Gefunden", icon: <Flag size={14} />, label: g.name, hint: "Ziel", run: () => navigate(`${base}/goals`) })),
+    ];
+    return { actions, sections, otherHobbies, found };
+  }, [data, hobbies, base]); // eslint-disable-line react-hooks/exhaustive-deps
 
-    return [...found, ...sections, ...actions, ...otherHobbies];
-  }, [q, data, d, hobbies, base]); // eslint-disable-line react-hooks/exhaustive-deps
-
-  useEffect(() => setIndex(0), [q]);
-  useEffect(() => {
-    listRef.current?.querySelector(`[data-index="${index}"]`)?.scrollIntoView({ block: "nearest" });
-  }, [index]);
-
-  const runEntry = (e?: Entry) => {
-    if (!e) return;
+  const runEntry = (e: Entry) => {
     close();
     e.run();
   };
+  const searching = !!q.trim();
 
-  let lastGroup = "";
   return (
     <div
       className="fixed inset-0 z-[80] flex items-start justify-center bg-black/32 p-6 pt-[12vh] backdrop-blur-[1px]"
       onMouseDown={(e) => e.target === e.currentTarget && close()}
     >
-      <div className="w-full max-w-xl overflow-hidden rounded-xl border border-line bg-card shadow-2xl/10">
+      <Command
+        label="Befehlssuche"
+        loop
+        // match the visible text (label + hint), not the internal ids
+        filter={(_value, search, keywords) => defaultFilter(keywords?.join(" ") ?? "", search)}
+        className="w-full max-w-xl overflow-hidden rounded-xl border border-line bg-card shadow-2xl/10"
+      >
         <div className="flex items-center gap-2 border-b border-line px-4">
           <Search size={16} className="text-muted/70" />
-          <input
+          <Command.Input
             autoFocus
-            className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-muted/70"
-            placeholder="Suchen oder Befehl eingeben …"
             value={q}
-            onChange={(e) => setQ(e.target.value)}
+            onValueChange={setQ}
+            placeholder="Suchen oder Befehl eingeben …"
+            className="flex-1 bg-transparent py-3 text-sm outline-none placeholder:text-muted/70"
             onKeyDown={(e) => {
-              e.stopPropagation();
-              if (e.key === "Escape") close();
-              if (e.key === "ArrowDown") {
-                e.preventDefault();
-                setIndex((i) => Math.min(entries.length - 1, i + 1));
+              if (e.key === "Escape") {
+                e.stopPropagation();
+                close();
               }
-              if (e.key === "ArrowUp") {
-                e.preventDefault();
-                setIndex((i) => Math.max(0, i - 1));
-              }
-              if (e.key === "Enter") runEntry(entries[index]);
             }}
           />
           <kbd className="rounded border border-line px-1.5 font-mono text-[10px] text-muted">Esc</kbd>
         </div>
-        <div ref={listRef} className="max-h-[50vh] overflow-y-auto p-1">
-          {entries.length === 0 && <p className="p-4 text-center text-sm text-muted">Nichts gefunden</p>}
-          {entries.map((e, i) => {
-            const header = e.group !== lastGroup ? e.group : null;
-            lastGroup = e.group;
-            return (
-              <div key={e.id}>
-                {header && (
-                  <div className="px-3 pt-2 pb-1 text-[11px] font-medium tracking-wide text-muted/70 uppercase">{header}</div>
-                )}
-                <button
-                  data-index={i}
-                  onMouseMove={() => setIndex(i)}
-                  onClick={() => runEntry(e)}
-                  className={clsx("flex w-full items-center gap-3 rounded-md px-3 py-2 text-left text-sm", i === index && "bg-elev")}
-                >
-                  <span className="pointer-events-none flex w-4 shrink-0 justify-center text-muted">{e.icon}</span>
-                  <span className="flex-1 truncate">{e.label}</span>
-                  {e.hint && <span className="truncate text-xs text-muted/70">{e.hint}</span>}
-                </button>
-              </div>
-            );
-          })}
-        </div>
-      </div>
+        <Command.List className="max-h-[50vh] scroll-py-1 overflow-y-auto p-1">
+          <Command.Empty className="p-4 text-center text-sm text-muted">Nichts gefunden</Command.Empty>
+          {searching && <PaletteGroup heading="Gefunden" entries={groups.found} onRun={runEntry} />}
+          <PaletteGroup heading="Aktionen" entries={groups.actions} onRun={runEntry} />
+          <PaletteGroup heading={hobby.name} entries={groups.sections} onRun={runEntry} />
+          <PaletteGroup heading="Hobbys" entries={groups.otherHobbies} onRun={runEntry} />
+        </Command.List>
+      </Command>
     </div>
+  );
+}
+
+function PaletteGroup({ heading, entries, onRun }: { heading: string; entries: Entry[]; onRun: (e: Entry) => void }) {
+  if (!entries.length) return null;
+  return (
+    <Command.Group
+      heading={heading}
+      className="[&_[cmdk-group-heading]]:px-3 [&_[cmdk-group-heading]]:pt-2 [&_[cmdk-group-heading]]:pb-1 [&_[cmdk-group-heading]]:text-[11px] [&_[cmdk-group-heading]]:font-medium [&_[cmdk-group-heading]]:tracking-wide [&_[cmdk-group-heading]]:text-muted/70 [&_[cmdk-group-heading]]:uppercase"
+    >
+      {entries.map((e) => (
+        <Command.Item
+          key={e.id}
+          value={e.id}
+          keywords={[e.label, e.hint ?? ""]}
+          onSelect={() => onRun(e)}
+          className="flex w-full cursor-pointer items-center gap-3 rounded-md px-3 py-2 text-left text-sm data-[selected=true]:bg-elev"
+        >
+          <span className="pointer-events-none flex w-4 shrink-0 justify-center text-muted">{e.icon}</span>
+          <span className="flex-1 truncate">{e.label}</span>
+          {e.hint && <span className="truncate text-xs text-muted/70">{e.hint}</span>}
+        </Command.Item>
+      ))}
+    </Command.Group>
   );
 }
